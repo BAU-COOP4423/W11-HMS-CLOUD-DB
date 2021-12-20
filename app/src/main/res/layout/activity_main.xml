@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity">
+
+    <Button
+        android:id="@+id/book_query_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Query Books"
+        app:layout_constraintTop_toTopOf="parent"
+        android:onClick="OnQueryBookInfoClick"/>
+
+    <TextView
+        android:id="@+id/book_query"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Query:\n"
+        app:layout_constraintTop_toBottomOf="@+id/book_query_button" />
+
+    <TextView
+        android:id="@+id/bookid"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Book ID: "
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/book_name"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Book Name: "
+        app:layout_constraintTop_toBottomOf="@id/bookid" />
+
+    <TextView
+        android:id="@+id/book_author"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Book Author: "
+        app:layout_constraintTop_toBottomOf="@id/book_name" />
+
+    <TextView
+        android:id="@+id/book_price"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Book Price: "
+        app:layout_constraintTop_toBottomOf="@id/book_author" />
+
+    <TextView
+        android:id="@+id/book_publisher"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Book Publisher: "
+        app:layout_constraintTop_toBottomOf="@id/book_price" />
+
+    <Button
+        android:id="@+id/book_upsert_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Upsert This Book"
+        app:layout_constraintTop_toBottomOf="@id/book_publisher"
+        android:onClick="OnUpsertBookInfoClick"/>
+
+    <Button
+        android:id="@+id/book_delete_button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Delete This Book"
+        android:onClick="OnDeleteBookInfoClick"
+        app:layout_constraintTop_toBottomOf="@id/book_upsert_button" />
+
+    <TextView
+        android:id="@+id/log"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Log:\n"
+        app:layout_constraintTop_toBottomOf="@id/book_delete_button" />
+
+
+</androidx.constraintlayout.widget.ConstraintLayout>
