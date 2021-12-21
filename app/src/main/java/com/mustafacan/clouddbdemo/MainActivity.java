@@ -36,9 +36,12 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        // #1 initialize AGConnect Cloud DB
         initAGConnectCloudDB(this);
         log = findViewById(R.id.log);
 
+        // #2 Authenticate the user of the app to access upsert and delete functions
         AGConnectAuth.getInstance().signInAnonymously().addOnSuccessListener(signInResult -> {
             AGConnectUser user = signInResult.getUser();
             Log.i(TAG, "onCreate: User is Authenticated, Display Name: " + user.getDisplayName() );
@@ -48,8 +51,140 @@ public class MainActivity extends AppCompatActivity {
             log.setText("Error: " + e.getMessage());
         });
         startScreenFill();
+
+        // #3 Get the Cloud DB
         mCloudDB = AGConnectCloudDB.getInstance();
+
+        // #4-6 Get Object Type and OpenCloudDBZone for executing operations
         startCloudDBInitialization();
+    }
+
+
+
+
+    public void upsertBookInfo(BookInfo bookInfo) {
+        // Check if cloudDBZone null, if it is than close the operation.
+        if (mCloudDBZone == null) {
+            Log.e(TAG, "upsertBookInfo: CloudDBZone is null, try re-opening");
+            return;
+        }
+
+        // Execute the executeUpsert function to add data to cloudDB
+        Task<Integer> upsertTask = mCloudDBZone.executeUpsert(bookInfo);
+        upsertTask.addOnSuccessListener(integer -> {
+            Log.i(TAG, "upsertBookInfos: Upserted " + integer + " records");
+            log.setText("upsertBookInfos: Upserted " + integer + " records");
+        }).addOnFailureListener(e -> {
+            Log.e(TAG, "upsertBookInfos: Insert book info failed with: " + e.getMessage() + "\n"
+            + "AG Err Message: " + ((AGConnectCloudDBException)e).getErrMsg() + ", code: " + ((AGConnectCloudDBException)e).getCode());
+            log.setText("Error: " + e.getMessage());
+
+        });
+    }
+
+    public void deleteBookInfo(BookInfo bookInfo) {
+        // Check if cloudDBZone null, if it is than close the operation.
+        if (mCloudDBZone == null) {
+            Log.e(TAG, "deleteBookInfo: CloudDBZone is null, try re-opening");
+            return;
+        }
+
+        // Execute the executeDelete function to add data to cloudDB
+        Task<Integer> deleteTask = mCloudDBZone.executeDelete(bookInfo);
+        deleteTask.addOnSuccessListener(integer -> {
+            Log.i(TAG, "deleteBookInfo: Deleted " + integer + " records");
+            log.setText("deleteBookInfo: Deleted " + integer + " records");
+        }).addOnFailureListener(e -> {
+            Log.e(TAG, "deleteBookInfo: Delete book info failed with: " + e.getMessage() + "\n"
+                    + "AG Err Message: " + ((AGConnectCloudDBException)e).getErrMsg() + ", code: " + ((AGConnectCloudDBException)e).getCode());
+            log.setText("Error: " + e.getMessage());
+
+        });
+    }
+
+    public void queryBookInfo() {
+        // Check if cloudDBZone null, if it is than close the operation.
+        if (mCloudDBZone == null) {
+            Log.e(TAG, "deleteBookInfo: CloudDBZone is null, try re-opening");
+            return;
+        }
+
+        // Execute the executeQuery function to add data to cloudDB
+        Task<CloudDBZoneSnapshot<BookInfo>> queryTask = mCloudDBZone.executeQuery(
+                CloudDBZoneQuery.where(BookInfo.class),
+                CloudDBZoneQuery.CloudDBZoneQueryPolicy.POLICY_QUERY_FROM_CLOUD_ONLY);
+
+        queryTask
+        .addOnSuccessListener( bookInfoCloudDBZoneSnapshot -> {
+            listQueriedObjects(bookInfoCloudDBZoneSnapshot.getSnapshotObjects());
+        }).addOnFailureListener(e -> {
+            Log.e(TAG, "queryBookInfo: e -> " + e.getMessage());
+            log.setText("Error: " + e.getMessage());
+        });
+    }
+
+
+    public BookInfo addCrimeAndPunishment(BookInfo bookInfo) {
+        bookInfo.setId(1);
+        bookInfo.setBookName("Crime and Punishment");
+        bookInfo.setAuthor("Fyodor Dostoyevski");
+        bookInfo.setPrice(30.00);
+        bookInfo.setPublisher("Karbon Kitaplar");
+        try {
+            bookInfo.setPublishTime(new SimpleDateFormat("dd/MM/yyyy", Locale.ENGLISH).parse("15/07/2016"));
+        } catch (ParseException e) {
+            Log.e(TAG, "addCrimeAndPunishment: Failed to parse date, e -> " + e.getMessage());
+            log.setText("Error: " + e.getMessage());
+            return null;
+        }
+        return bookInfo;
+    }
+
+    public void OnUpsertBookInfoClick(View view) {
+        BookInfo book1 = new BookInfo();
+        book1 = addCrimeAndPunishment(book1);
+        upsertBookInfo(book1);
+    }
+
+    public void OnDeleteBookInfoClick(View view) {
+        BookInfo book1 = new BookInfo();
+        book1 = addCrimeAndPunishment(book1);
+        deleteBookInfo(book1);
+    }
+
+    public void OnQueryBookInfoClick(View view) {
+        queryBookInfo();
+    }
+
+    public void listQueriedObjects(CloudDBZoneObjectList<BookInfo> bookInfoCursor) {
+        try {
+            TextView queryText = findViewById(R.id.book_query);
+            if (!bookInfoCursor.hasNext()) {
+                queryText.setText("Query\n" +
+                        "Book ID:\n" +
+                        "Book Name:\n" +
+                        "Book Author:\n" +
+                        "Book Price:\n" +
+                        "Book Publisher:");
+            }
+            while (bookInfoCursor.hasNext()) {
+                BookInfo bookInfo = bookInfoCursor.next();
+                queryText.setText("Query\n" +
+                        "Book ID: " + bookInfo.getId() + "\n" +
+                        "Book Name: " + bookInfo.getBookName() + "\n" +
+                        "Book Author: " + bookInfo.getAuthor() + "\n" +
+                        "Book Price: " + bookInfo.getPrice()+ "\n" +
+                        "Book Publisher: " + bookInfo.getPublisher());
+            }
+            log.setText("listQueriedObjects: Queried " + bookInfoCursor.size() + " objects.");
+        }catch (Exception e) {
+            Log.e(TAG, "listQueriedObjects: Error while Listing Query results, e -> " + e.getMessage());
+            log.setText("Error: " + e.getMessage());
+        }
+    }
+
+    public static void initAGConnectCloudDB(Context context) {
+        AGConnectCloudDB.initialize(context);
     }
 
     public void startScreenFill() {
@@ -91,121 +226,25 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    public BookInfo addCrimeAndPunishment(BookInfo bookInfo) {
-        bookInfo.setId(1);
-        bookInfo.setBookName("Crime and Punishment");
-        bookInfo.setAuthor("Fyodor Dostoyevski");
-        bookInfo.setPrice(30.00);
-        bookInfo.setPublisher("Karbon Kitaplar");
-        try {
-            bookInfo.setPublishTime(new SimpleDateFormat("dd/MM/yyyy", Locale.ENGLISH).parse("15/07/2016"));
-        } catch (ParseException e) {
-            Log.e(TAG, "addCrimeAndPunishment: Failed to parse date, e -> " + e.getMessage());
-            log.setText("Error: " + e.getMessage());
-            return null;
-        }
-        return bookInfo;
-    }
 
-    public void upsertBookInfo(BookInfo bookInfo) {
-        if (mCloudDBZone == null) {
-            Log.e(TAG, "upsertBookInfo: CloudDBZone is null, try re-opening");
-            return;
-        }
+    public void test(Context context) throws AGConnectCloudDBException {
 
-        Task<Integer> upsertTask = mCloudDBZone.executeUpsert(bookInfo);
-        upsertTask.addOnSuccessListener(integer -> {
-            Log.i(TAG, "upsertBookInfos: Upserted " + integer + " records");
-            log.setText("upsertBookInfos: Upserted " + integer + " records");
-        }).addOnFailureListener(e -> {
-            Log.e(TAG, "upsertBookInfos: Insert book info failed with: " + e.getMessage() + "\n"
-            + "AG Err Message: " + ((AGConnectCloudDBException)e).getErrMsg() + ", code: " + ((AGConnectCloudDBException)e).getCode());
-            log.setText("Error: " + e.getMessage());
-
-        });
-    }
-
-    public void deleteBookInfo(BookInfo bookInfo) {
-        if (mCloudDBZone == null) {
-            Log.e(TAG, "deleteBookInfo: CloudDBZone is null, try re-opening");
-            return;
-        }
-
-        Task<Integer> deleteTask = mCloudDBZone.executeDelete(bookInfo);
-        deleteTask.addOnSuccessListener(integer -> {
-            Log.i(TAG, "deleteBookInfo: Deleted " + integer + " records");
-            log.setText("deleteBookInfo: Deleted " + integer + " records");
-        }).addOnFailureListener(e -> {
-            Log.e(TAG, "deleteBookInfo: Delete book info failed with: " + e.getMessage() + "\n"
-                    + "AG Err Message: " + ((AGConnectCloudDBException)e).getErrMsg() + ", code: " + ((AGConnectCloudDBException)e).getCode());
-            log.setText("Error: " + e.getMessage());
-
-        });
-    }
-
-    public void listQueriedObjects(CloudDBZoneObjectList<BookInfo> bookInfoCursor) {
-        try {
-            TextView queryText = findViewById(R.id.book_query);
-            if (!bookInfoCursor.hasNext()) {
-                queryText.setText("Query\n" +
-                        "Book ID:\n" +
-                        "Book Name:\n" +
-                        "Book Author:\n" +
-                        "Book Price:\n" +
-                        "Book Publisher:");
-            }
-            while (bookInfoCursor.hasNext()) {
-                BookInfo bookInfo = bookInfoCursor.next();
-                queryText.setText("Query\n" +
-                        "Book ID: " + bookInfo.getId() + "\n" +
-                        "Book Name: " + bookInfo.getBookName() + "\n" +
-                        "Book Author: " + bookInfo.getAuthor() + "\n" +
-                        "Book Price: " + bookInfo.getPrice()+ "\n" +
-                        "Book Publisher: " + bookInfo.getPublisher());
-            }
-            log.setText("listQueriedObjects: Queried " + bookInfoCursor.size() + " objects.");
-        }catch (Exception e) {
-            Log.e(TAG, "listQueriedObjects: Error while Listing Query results, e -> " + e.getMessage());
-            log.setText("Error: " + e.getMessage());
-        }
-    }
-
-    public void queryBookInfo() {
-        if (mCloudDBZone == null) {
-            Log.e(TAG, "deleteBookInfo: CloudDBZone is null, try re-opening");
-            return;
-        }
-
-        Task<CloudDBZoneSnapshot<BookInfo>> queryTask = mCloudDBZone.executeQuery(
-                CloudDBZoneQuery.where(BookInfo.class),
-                CloudDBZoneQuery.CloudDBZoneQueryPolicy.POLICY_QUERY_FROM_CLOUD_ONLY);
-
-        queryTask
-        .addOnSuccessListener( bookInfoCloudDBZoneSnapshot -> {
-            listQueriedObjects(bookInfoCloudDBZoneSnapshot.getSnapshotObjects());
-        }).addOnFailureListener(e -> {
-            Log.e(TAG, "queryBookInfo: e -> " + e.getMessage());
-            log.setText("Error: " + e.getMessage());
-        });
-    }
-
-    public static void initAGConnectCloudDB(Context context) {
+        // #1 Initialize the AGConnectCloudDB
         AGConnectCloudDB.initialize(context);
-    }
+        // #2 Authenticate the user for usage of upsert and delete
+        AGConnectAuth.getInstance().signInAnonymously();
+        // #3 Get the AGConnectCloudDB instance that we initialized earlier
+        AGConnectCloudDB mCloudDB = AGConnectCloudDB.getInstance();
+        // #4 Create our object type using the .model files in the project
+        mCloudDB.createObjectType(ObjectTypeInfoHelper.getObjectTypeInfo());
+        // #5 Configure our CloudDBZone
+        CloudDBZoneConfig mConfig = new CloudDBZoneConfig("QuickStartDemo",
+                CloudDBZoneConfig.CloudDBZoneSyncProperty.CLOUDDBZONE_CLOUD_CACHE,
+                CloudDBZoneConfig.CloudDBZoneAccessProperty.CLOUDDBZONE_PUBLIC);
+        // #6 Get the cloudDBZone object for directly executing upsert, delete and query
+        mCloudDB.openCloudDBZone2(mConfig, true).addOnSuccessListener(cloudDBZone -> mCloudDBZone = cloudDBZone);
 
-    public void OnUpsertBookInfoClick(View view) {
-        BookInfo book1 = new BookInfo();
-        book1 = addCrimeAndPunishment(book1);
-        upsertBookInfo(book1);
-    }
 
-    public void OnDeleteBookInfoClick(View view) {
-        BookInfo book1 = new BookInfo();
-        book1 = addCrimeAndPunishment(book1);
-        deleteBookInfo(book1);
-    }
 
-    public void OnQueryBookInfoClick(View view) {
-        queryBookInfo();
     }
 }
